@@ -70,4 +70,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: (): NodeJS.ProcessVersions => {
     return process.versions
   },
+
+  // 通用 invoke 方法
+  invoke: (channel: string, ...args: any[]): Promise<any> => {
+    return ipcRenderer.invoke(channel, ...args)
+  },
+
+  // 事件监听
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    const validChannels = ['launch:progress', 'bundle:progress', 'wallet:update']
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, callback)
+    }
+  },
+
+  // 移除事件监听
+  removeListener: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.removeListener(channel, callback)
+  },
+
+  // Launch API (发币功能)
+  launch: {
+    onLaunchProgress: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.on('launch:progress', callback)
+    },
+    removeLaunchProgressListener: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.removeListener('launch:progress', callback)
+    }
+  },
+
+  // Bundle API (批量买入功能)
+  bundle: {
+    onBundleProgress: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.on('bundle:progress', callback)
+    },
+    removeBundleProgressListener: (callback: (event: any, data: any) => void) => {
+      ipcRenderer.removeListener('bundle:progress', callback)
+    }
+  }
 })

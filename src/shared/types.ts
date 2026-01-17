@@ -87,4 +87,99 @@ declare global {
   }
 }
 
+// ==================== 发币任务类型 ====================
+
+export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+
+export interface LaunchTask {
+  id: string
+  network: 'BSC' | 'Solana'
+  tokenName: string
+  tokenSymbol: string
+  totalSupply: string
+  decimals: number
+  status: TaskStatus
+  createdAt: number
+  startedAt?: number
+  completedAt?: number
+  progress: number
+  result?: LaunchResult
+  error?: string
+  walletId: string
+  walletAddress: string
+  useMEVProtection?: boolean
+}
+
+export interface LaunchResult {
+  contractAddress?: string
+  mintAddress?: string
+  txHash: string
+  blockNumber?: number
+  slot?: number
+  gasUsed?: string
+  gasPrice?: string
+  totalFee?: string
+}
+
+export interface TokenLaunchParams {
+  name: string
+  symbol: string
+  totalSupply: string
+  decimals: number
+  network: 'BSC' | 'Solana'
+  walletId: string
+  useMEVProtection?: boolean
+}
+
+// ==================== 批量买入类型 ====================
+
+export interface BundleBuyParams {
+  network: 'BSC' | 'Solana'
+  tokenAddress: string
+  walletIds: string[]
+  amountPerWallet: string
+  slippage: number
+  priority: 'low' | 'normal' | 'high'
+  delayBetweenTx: number
+  useMEVProtection?: boolean
+  useJito?: boolean
+}
+
+export interface BundleBuyStatus {
+  batchId: string
+  status: 'pending' | 'executing' | 'completed' | 'failed' | 'cancelled'
+  currentIndex: number
+  totalWallets: number
+  results: BundleBuyResult[]
+}
+
+export interface BundleBuyResult {
+  walletId: string
+  walletAddress: string
+  txHash?: string
+  amountIn: string
+  amountOut?: string
+  gasUsed?: string
+  status: 'success' | 'failed' | 'pending'
+  error?: string
+}
+
+// ==================== 余额类型 ====================
+
+export interface TokenBalance {
+  address: string
+  symbol: string
+  name: string
+  balance: string
+  decimals: number
+}
+
+// ==================== 用户类型 ====================
+
+export interface User {
+  id: string
+  username: string
+  isAuthenticated: boolean
+}
+
 export {}

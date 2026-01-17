@@ -1,0 +1,1050 @@
+/**
+ * src/renderer/LaunchTasks.tsx
+ * 发币任务列表和监控界面 - 完整实现
+ */
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle
+} from '@/components/ui/alert'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { 
+  AlertCircle, 
+  CheckCircle, 
+  Loader2, 
+  RefreshCw,
+  Filter,
+  Search,
+  Trash2,
+  RotateCcw,
+  Download,
+  Clock,
+  TrendingUp,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  PauseCircle
+} from 'lucide-react'
+
+// ==================== 类型定义 ====================
+
+interface LaunchTask {
+  id: string
+  network: 'BSC' | 'Solana'
+  tokenName: string
+  tokenSymbol: string
+  totalSupply: string
+  decimals: number
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  createdAt: number
+  startedAt?: number
+  completedAt?: number
+  progress: number
+  result?: {
+    contractAddress?: string
+    mintAddress?: string
+    txHash: string
+    blockNumber?: number
+    slot?: number
+    gasUsed?: string
+    gasPrice?: string
+    totalFee?: string
+  }
+  error?: string
+  walletId: string
+  walletAddress: string
+  useMEVProtection?: boolean
+}
+
+interface TaskStatistics {
+  total: number
+  pending: number
+  processing: number
+  completed: number
+  failed: number
+  cancelled: number
+  successRate: number
+  avgExecutionTime: number
+  bscCount: number
+  solanaCount: number
+}
+
+interface TaskFilter {
+  status: 'all' | 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  network: 'all' | 'BSC' | 'Solana'
+  search: string
+  sortBy: 'createdAt' | 'status' | 'network' | 'tokenName'
+  sortOrder: 'asc' | 'desc'
+}
+
+// ==================== 主组件 ====================
+
+export const LaunchTasks: React.FC = () => {
+  // ==================== 状态管理 ====================
+
+  // 任务列表
+  const [tasks, setTasks] = useState<LaunchTask[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
+  const [error, setError] = useState<string>('')
+
+  // 筛选和排序
+  const [filter, setFilter] = useState<TaskFilter>({
+    status: 'all',
+    network: 'all',
+    search: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc'
+  })
+
+  // 选中的任务
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
+
+  // 展开的任务
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
+
+  // UI状态
+  const [showFilters, setShowFilters] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now())
+
+  // ==================== 工具函数 ====================
+
+  const formatAddress = (address: string, length: number = 8): string => {
+    if (!address) return ''
+    return `${address.slice(0, length)}...${address.slice(-4)}`
+  }
+
+  const formatTimestamp = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const formatDuration = (start: number, end: number): string => {
+    const duration = end - start
+    const seconds = Math.floor(duration / 1000)
+    const minutes = Math.floor(seconds / 60)
+    
+    if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`
+    }
+    return `${seconds}s`
+  }
+
+  const getStatusColor = (status: LaunchTask['status']): string => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500'
+      case 'processing': return 'bg-blue-500'
+      case 'completed': return 'bg-green-500'
+      case 'failed': return 'bg-red-500'
+      case 'cancelled': return 'bg-gray-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getStatusBadgeVariant = (status: LaunchTask['status']): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    switch (status) {
+      case 'pending': return 'secondary'
+      case 'processing': return 'default'
+      case 'completed': return 'default'
+      case 'failed': return 'destructive'
+      case 'cancelled': return 'secondary'
+      default: return 'secondary'
+    }
+  }
+
+  // ==================== 数据加载 ====================
+
+  // 加载任务列表
+  const loadTasks = useCallback(async () => {
+    setLoadingTasks(true)
+    setError('')
+
+    try {
+      const response = await window.electronAPI.invoke('launch:getAllTasks')
+
+      if (response.success && response.data) {
+        setTasks(response.data)
+        setLastRefresh(Date.now())
+      } else {
+        setError(response.error || 'Failed to load tasks')
+      }
+    } catch (err) {
+      console.error('Failed to load tasks:', err)
+      setError('Failed to load tasks')
+    } finally {
+      setLoadingTasks(false)
+    }
+  }, [])
+
+  // 初始加载
+  useEffect(() => {
+    loadTasks()
+  }, [loadTasks])
+
+  // 自动刷新
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(() => {
+      loadTasks()
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, loadTasks])
+
+  // 监听任务更新事件
+  useEffect(() => {
+    const handleTaskUpdate = (_event: any, data: { taskId: string; status: string; result?: any }) => {
+      setTasks(prev => prev.map(task => {
+        if (task.id === data.taskId) {
+          const updated = { ...task }
+          if (data.status) updated.status = data.status as any
+          if (data.result) updated.result = data.result
+          if (data.status === 'completed' || data.status === 'failed') {
+            updated.completedAt = Date.now()
+            updated.progress = 100
+          }
+          return updated
+        }
+        return task
+      }))
+    }
+
+    // 注册事件监听
+    window.electronAPI.onLaunchProgress?.(handleTaskUpdate)
+
+    return () => {
+      // 清理事件监听（如果支持）
+    }
+  }, [])
+
+  // ==================== 筛选和排序 ====================
+
+  const filteredAndSortedTasks = useMemo(() => {
+    let filtered = [...tasks]
+
+    // 状态筛选
+    if (filter.status !== 'all') {
+      filtered = filtered.filter(task => task.status === filter.status)
+    }
+
+    // 网络筛选
+    if (filter.network !== 'all') {
+      filtered = filtered.filter(task => task.network === filter.network)
+    }
+
+    // 搜索筛选
+    if (filter.search) {
+      const searchLower = filter.search.toLowerCase()
+      filtered = filtered.filter(task =>
+        task.tokenName.toLowerCase().includes(searchLower) ||
+        task.tokenSymbol.toLowerCase().includes(searchLower) ||
+        task.id.toLowerCase().includes(searchLower) ||
+        task.walletAddress.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // 排序
+    filtered.sort((a, b) => {
+      let comparison = 0
+
+      switch (filter.sortBy) {
+        case 'createdAt':
+          comparison = a.createdAt - b.createdAt
+          break
+        case 'status':
+          comparison = a.status.localeCompare(b.status)
+          break
+        case 'network':
+          comparison = a.network.localeCompare(b.network)
+          break
+        case 'tokenName':
+          comparison = a.tokenName.localeCompare(b.tokenName)
+          break
+        default:
+          comparison = 0
+      }
+
+      return filter.sortOrder === 'asc' ? comparison : -comparison
+    })
+
+    return filtered
+  }, [tasks, filter])
+
+  // ==================== 统计数据 ====================
+
+  const statistics = useMemo((): TaskStatistics => {
+    const total = tasks.length
+    const pending = tasks.filter(t => t.status === 'pending').length
+    const processing = tasks.filter(t => t.status === 'processing').length
+    const completed = tasks.filter(t => t.status === 'completed').length
+    const failed = tasks.filter(t => t.status === 'failed').length
+    const cancelled = tasks.filter(t => t.status === 'cancelled').length
+
+    const successRate = total > 0 ? (completed / (completed + failed)) * 100 : 0
+
+    const completedTasks = tasks.filter(t => t.status === 'completed' && t.startedAt && t.completedAt)
+    const avgExecutionTime = completedTasks.length > 0
+      ? completedTasks.reduce((sum, t) => sum + (t.completedAt! - t.startedAt!), 0) / completedTasks.length
+      : 0
+
+    const bscCount = tasks.filter(t => t.network === 'BSC').length
+    const solanaCount = tasks.filter(t => t.network === 'Solana').length
+
+    return {
+      total,
+      pending,
+      processing,
+      completed,
+      failed,
+      cancelled,
+      successRate,
+      avgExecutionTime,
+      bscCount,
+      solanaCount
+    }
+  }, [tasks])
+
+  // ==================== 任务操作 ====================
+
+  // 展开/折叠任务详情
+  const toggleTaskExpanded = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId)
+      } else {
+        newSet.add(taskId)
+      }
+      return newSet
+    })
+  }
+
+  // 全选/取消全选
+  const toggleSelectAll = () => {
+    if (selectedTasks.size === filteredAndSortedTasks.length) {
+      setSelectedTasks(new Set())
+    } else {
+      setSelectedTasks(new Set(filteredAndSortedTasks.map(t => t.id)))
+    }
+  }
+
+  // 切换单个任务选择
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId)
+      } else {
+        newSet.add(taskId)
+      }
+      return newSet
+    })
+  }
+
+  // 取消任务
+  const handleCancelTask = async (taskId: string) => {
+    try {
+      const response = await window.electronAPI.invoke('launch:cancelTask', taskId)
+
+      if (response.success) {
+        await loadTasks()
+      } else {
+        alert(`Failed to cancel task: ${response.error}`)
+      }
+    } catch (err) {
+      alert(`Failed to cancel task: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // 重试任务
+  const handleRetryTask = async (taskId: string) => {
+    try {
+      const response = await window.electronAPI.invoke('launch:retryTask', taskId)
+
+      if (response.success) {
+        await loadTasks()
+      } else {
+        alert(`Failed to retry task: ${response.error}`)
+      }
+    } catch (err) {
+      alert(`Failed to retry task: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // 删除任务
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return
+
+    try {
+      const response = await window.electronAPI.invoke('launch:deleteTask', taskId)
+
+      if (response.success) {
+        await loadTasks()
+      } else {
+        alert(`Failed to delete task: ${response.error}`)
+      }
+    } catch (err) {
+      alert(`Failed to delete task: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // 批量重试失败任务
+  const handleBatchRetry = async () => {
+    const failedTasks = filteredAndSortedTasks.filter(t => t.status === 'failed' && selectedTasks.has(t.id))
+
+    if (failedTasks.length === 0) {
+      alert('No failed tasks selected')
+      return
+    }
+
+    if (!confirm(`Retry ${failedTasks.length} failed tasks?`)) return
+
+    try {
+      for (const task of failedTasks) {
+        await window.electronAPI.invoke('launch:retryTask', task.id)
+      }
+      await loadTasks()
+      setSelectedTasks(new Set())
+    } catch (err) {
+      alert(`Failed to retry tasks: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // 批量删除已完成/失败任务
+  const handleBatchDelete = async () => {
+    const deletableTasks = filteredAndSortedTasks.filter(
+      t => (t.status === 'completed' || t.status === 'failed') && selectedTasks.has(t.id)
+    )
+
+    if (deletableTasks.length === 0) {
+      alert('No tasks selected for deletion')
+      return
+    }
+
+    if (!confirm(`Delete ${deletableTasks.length} tasks?`)) return
+
+    try {
+      for (const task of deletableTasks) {
+        await window.electronAPI.invoke('launch:deleteTask', task.id)
+      }
+      await loadTasks()
+      setSelectedTasks(new Set())
+    } catch (err) {
+      alert(`Failed to delete tasks: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // 导出任务数据
+  const handleExport = async (format: 'csv' | 'json') => {
+    try {
+      const data = selectedTasks.size > 0
+        ? filteredAndSortedTasks.filter(t => selectedTasks.has(t.id))
+        : filteredAndSortedTasks
+
+      if (format === 'json') {
+        const jsonData = JSON.stringify(data, null, 2)
+        const blob = new Blob([jsonData], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `launch-tasks-${Date.now()}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        const csv = [
+          ['ID', 'Network', 'Token Name', 'Symbol', 'Supply', 'Status', 'Created At', 'Completed At', 'Tx Hash', 'Error'],
+          ...data.map(t => [
+            t.id,
+            t.network,
+            t.tokenName,
+            t.tokenSymbol,
+            t.totalSupply,
+            t.status,
+            new Date(t.createdAt).toISOString(),
+            t.completedAt ? new Date(t.completedAt).toISOString() : '',
+            t.result?.txHash || '',
+            t.error || ''
+          ])
+        ].map(row => row.join(',')).join('\n')
+
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `launch-tasks-${Date.now()}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      alert(`Failed to export: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // 更新筛选器
+  const updateFilter = <K extends keyof TaskFilter>(key: K, value: TaskFilter[K]) => {
+    setFilter(prev => ({ ...prev, [key]: value }))
+  }
+
+  // ==================== 渲染 ====================
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      {/* 页面标题 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Launch Tasks</h1>
+          <p className="text-muted-foreground">Monitor and manage your token launch tasks</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAutoRefresh(!autoRefresh)}
+          >
+            {autoRefresh ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Auto Refresh On
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Auto Refresh Off
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadTasks}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* 错误提示 */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold">{statistics.total}</div>
+            <div className="text-xs text-muted-foreground">Total Tasks</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-yellow-500">{statistics.pending}</div>
+            <div className="text-xs text-muted-foreground">Pending</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-blue-500">{statistics.processing}</div>
+            <div className="text-xs text-muted-foreground">Processing</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-500">{statistics.completed}</div>
+            <div className="text-xs text-muted-foreground">Completed</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-red-500">{statistics.failed}</div>
+            <div className="text-xs text-muted-foreground">Failed</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold">{statistics.successRate.toFixed(1)}%</div>
+            <div className="text-xs text-muted-foreground">Success Rate</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold">
+              {formatDuration(0, statistics.avgExecutionTime)}
+            </div>
+            <div className="text-xs text-muted-foreground">Avg Time</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 网络统计 */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-lg font-bold">{statistics.bscCount}</div>
+                <div className="text-sm text-muted-foreground">BSC Tasks</div>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                <Badge variant="default" className="bg-yellow-500">BSC</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-lg font-bold">{statistics.solanaCount}</div>
+                <div className="text-sm text-muted-foreground">Solana Tasks</div>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <Badge variant="secondary" className="bg-purple-500">Solana</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 筛选和搜索 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Filters</CardTitle>
+              <CardDescription>
+                {filteredAndSortedTasks.length} task{filteredAndSortedTasks.length !== 1 ? 's' : ''} displayed
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              {showFilters ? 'Hide' : 'Show'} Filters
+            </Button>
+          </div>
+        </CardHeader>
+        {showFilters && (
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* 搜索 */}
+              <div className="lg:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by token name, symbol, ID..."
+                    value={filter.search}
+                    onChange={(e) => updateFilter('search', e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              {/* 状态筛选 */}
+              <Select
+                value={filter.status}
+                onValueChange={(value) => updateFilter('status', value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* 网络筛选 */}
+              <Select
+                value={filter.network}
+                onValueChange={(value) => updateFilter('network', value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by network" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Networks</SelectItem>
+                  <SelectItem value="BSC">BSC</SelectItem>
+                  <SelectItem value="Solana">Solana</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* 排序 */}
+              <Select
+                value={`${filter.sortBy}-${filter.sortOrder}`}
+                onValueChange={(value) => {
+                  const [sortBy, sortOrder] = value.split('-') as [any, any]
+                  updateFilter('sortBy', sortBy)
+                  updateFilter('sortOrder', sortOrder)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt-desc">Newest First</SelectItem>
+                  <SelectItem value="createdAt-asc">Oldest First</SelectItem>
+                  <SelectItem value="status-desc">Status (Z-A)</SelectItem>
+                  <SelectItem value="status-asc">Status (A-Z)</SelectItem>
+                  <SelectItem value="tokenName-asc">Name (A-Z)</SelectItem>
+                  <SelectItem value="tokenName-desc">Name (Z-A)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* 批量操作栏 */}
+      {selectedTasks.size > 0 && (
+        <Card className="border-primary">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedTasks.size > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm font-medium">
+                {selectedTasks.size} task{selectedTasks.size > 1 ? 's' : ''} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchRetry}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retry Failed
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchDelete}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 任务列表 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Task List</CardTitle>
+              <CardDescription>
+                Last refresh: {formatTimestamp(lastRefresh)}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport('csv')}
+                disabled={filteredAndSortedTasks.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport('json')}
+                disabled={filteredAndSortedTasks.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export JSON
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingTasks ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : filteredAndSortedTasks.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">No tasks found</div>
+              <p className="text-sm text-muted-foreground">
+                {filter.search || filter.status !== 'all' || filter.network !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'Launch your first token to see tasks here'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* 表头 */}
+              <div className="flex items-center gap-3 p-3 text-sm text-muted-foreground border-b">
+                <div className="w-6">
+                  <Checkbox
+                    checked={selectedTasks.size === filteredAndSortedTasks.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </div>
+                <div className="flex-1">Token</div>
+                <div className="w-24">Network</div>
+                <div className="w-24">Status</div>
+                <div className="w-32">Created</div>
+                <div className="w-24">Duration</div>
+                <div className="w-16"></div>
+              </div>
+
+              {/* 任务列表 */}
+              {filteredAndSortedTasks.map(task => (
+                <div
+                  key={task.id}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  {/* 任务摘要 */}
+                  <div className="flex items-center gap-3 p-3 hover:bg-muted/50">
+                    <div className="w-6">
+                      <Checkbox
+                        checked={selectedTasks.has(task.id)}
+                        onCheckedChange={() => toggleTaskSelection(task.id)}
+                      />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold">{task.tokenName}</div>
+                        <Badge variant="outline">{task.tokenSymbol}</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {formatAddress(task.walletAddress)}
+                      </div>
+                    </div>
+
+                    <div className="w-24">
+                      <Badge variant={task.network === 'BSC' ? 'default' : 'secondary'}>
+                        {task.network}
+                      </Badge>
+                    </div>
+
+                    <div className="w-24">
+                      <Badge variant={getStatusBadgeVariant(task.status)}>
+                        {task.status}
+                      </Badge>
+                    </div>
+
+                    <div className="w-32 text-sm">
+                      {formatTimestamp(task.createdAt)}
+                    </div>
+
+                    <div className="w-24 text-sm">
+                      {task.startedAt && task.completedAt
+                        ? formatDuration(task.startedAt, task.completedAt)
+                        : task.startedAt
+                          ? formatDuration(task.startedAt, Date.now())
+                          : '-'}
+                    </div>
+
+                    <div className="w-16 flex items-center justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleTaskExpanded(task.id)}
+                      >
+                        {expandedTasks.has(task.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 任务详情 */}
+                  {expandedTasks.has(task.id) && (
+                    <div className="border-t p-4 space-y-4 bg-muted/20">
+                      {/* 进度 */}
+                      {task.status === 'processing' && (
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span>Progress</span>
+                            <span>{task.progress}%</span>
+                          </div>
+                          <Progress value={task.progress} className="h-2" />
+                        </div>
+                      )}
+
+                      {/* 基本信息 */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">Task ID</div>
+                          <div className="font-mono">{task.id.slice(0, 16)}...</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Total Supply</div>
+                          <div>{task.totalSupply}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Decimals</div>
+                          <div>{task.decimals}</div>
+                        </div>
+                      </div>
+
+                      {/* 时间信息 */}
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Created At
+                          </div>
+                          <div>{formatTimestamp(task.createdAt)}</div>
+                        </div>
+                        {task.startedAt && (
+                          <div>
+                            <div className="text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Started At
+                            </div>
+                            <div>{formatTimestamp(task.startedAt)}</div>
+                          </div>
+                        )}
+                        {task.completedAt && (
+                          <div>
+                            <div className="text-muted-foreground flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Completed At
+                            </div>
+                            <div>{formatTimestamp(task.completedAt)}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 结果信息 */}
+                      {task.result && (
+                        <div className="border rounded-md p-3 space-y-2">
+                          <div className="font-medium">Result</div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            {task.result.contractAddress && (
+                              <div>
+                                <div className="text-muted-foreground">Contract Address</div>
+                                <div className="font-mono">{formatAddress(task.result.contractAddress)}</div>
+                              </div>
+                            )}
+                            {task.result.mintAddress && (
+                              <div>
+                                <div className="text-muted-foreground">Mint Address</div>
+                                <div className="font-mono">{formatAddress(task.result.mintAddress)}</div>
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-muted-foreground">Transaction Hash</div>
+                              <div className="font-mono">{formatAddress(task.result.txHash)}</div>
+                            </div>
+                            {task.result.gasUsed && (
+                              <div>
+                                <div className="text-muted-foreground">Gas Used</div>
+                                <div>{task.result.gasUsed}</div>
+                              </div>
+                            )}
+                            {task.result.totalFee && (
+                              <div>
+                                <div className="text-muted-foreground">Total Fee</div>
+                                <div>{task.result.totalFee}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 错误信息 */}
+                      {task.error && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>{task.error}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* 操作按钮 */}
+                      <div className="flex gap-2">
+                        {task.status === 'pending' || task.status === 'processing' ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleCancelTask(task.id)}
+                          >
+                            <PauseCircle className="mr-2 h-4 w-4" />
+                            Cancel
+                          </Button>
+                        ) : task.status === 'failed' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRetryTask(task.id)}
+                          >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Retry
+                          </Button>
+                        ) : null}
+
+                        {(task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteTask(task.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default LaunchTasks
