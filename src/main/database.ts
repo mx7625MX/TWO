@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import { app } from 'electron'
-import type { Wallet, CreateWalletInput } from '../shared/types'
+import type { Wallet, DatabaseWalletInput } from '../shared/types'
 
 /**
  * 钱包数据库管理类
@@ -68,7 +68,7 @@ class WalletDatabase {
    * @param wallet 钱包数据
    * @returns 插入的钱包ID
    */
-  insertWallet(wallet: CreateWalletInput): string {
+  insertWallet(wallet: DatabaseWalletInput): string {
     if (!this.db) throw new Error('数据库未初始化')
 
     // 检查钱包总数
@@ -226,25 +226,6 @@ class WalletDatabase {
     } catch (error) {
       console.error('删除钱包失败:', error)
       throw new Error('删除钱包失败')
-    }
-  }
-
-  /**
-   * 获取钱包总数
-   * @returns 钱包总数
-   */
-  getWalletCount(): number {
-    if (!this.db) throw new Error('数据库未初始化')
-
-    const countSQL = 'SELECT COUNT(*) as count FROM wallets'
-
-    try {
-      const stmt = this.db.prepare(countSQL)
-      const result = stmt.get() as { count: number }
-      return result.count
-    } catch (error) {
-      console.error('获取钱包总数失败:', error)
-      throw new Error('获取钱包总数失败')
     }
   }
 

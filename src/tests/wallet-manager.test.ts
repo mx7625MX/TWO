@@ -8,6 +8,24 @@ import { encrypt, decrypt, validatePasswordStrength } from '../shared/cryptoUtil
 import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
 
+// 辅助函数：带重试的网络请求
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error: any) {
+      if (i === maxRetries - 1) throw error
+      console.log(`  ⚠ 网络请求失败，${delayMs}ms 后重试 (${i + 1}/${maxRetries})`)
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+  throw new Error('重试次数用尽')
+}
+
 // 测试结果统计
 const testResults = {
   total: 0,
@@ -270,7 +288,7 @@ const testBSCBalanceQuery = test('BSC余额查询', async () => {
   
   console.log('  ℹ 查询地址:', testAddress)
   
-  const balance = await getBSCBalance(testAddress)
+  const balance = await withRetry(() => getBSCBalance(testAddress))
   
   if (typeof balance !== 'string') throw new Error('余额类型错误')
   if (isNaN(parseFloat(balance))) throw new Error('余额不是有效数字')
@@ -286,7 +304,7 @@ const testSolanaBalanceQuery = test('Solana余额查询', async () => {
   
   console.log('  ℹ 查询地址:', testAddress)
   
-  const balance = await getSolanaBalance(testAddress)
+  const balance = await withRetry(() => getSolanaBalance(testAddress))
   
   if (typeof balance !== 'string') throw new Error('余额类型错误')
   if (isNaN(parseFloat(balance))) throw new Error('余额不是有效数字')
@@ -297,11 +315,11 @@ const testSolanaBalanceQuery = test('Solana余额查询', async () => {
 
 // ============ 测试11: WalletManager余额查询 ============
 const testWalletManagerBalance = test('WalletManager余额查询', async () => {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   // 测试BSC
   const bscAddress = '0x8894E0a0c962CB723c1976a4421c95949bE2D4E3'
-  const bscBalance = await manager.getBalance(bscAddress, 'BSC')
+  const bscBalance = await withRetry(() => manager.getBalance(bscAddress, 'BSC'))
   
   if (!bscBalance.address) throw new Error('缺少地址')
   if (bscBalance.network !== 'BSC') throw new Error('网络类型错误')
@@ -312,7 +330,7 @@ const testWalletManagerBalance = test('WalletManager余额查询', async () => {
   
   // 测试Solana
   const solanaAddress = 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK'
-  const solanaBalance = await manager.getBalance(solanaAddress, 'Solana')
+  const solanaBalance = await withRetry(() => manager.getBalance(solanaAddress, 'Solana'))
   
   if (!solanaBalance.address) throw new Error('缺少地址')
   if (solanaBalance.network !== 'Solana') throw new Error('网络类型错误')
@@ -324,7 +342,7 @@ const testWalletManagerBalance = test('WalletManager余额查询', async () => {
 
 // ============ 测试12: 批量余额查询 ============
 const testBatchBalanceQuery = test('批量余额查询', async () => {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   const wallets = [
     { address: '0x8894E0a0c962CB723c1976a4421c95949bE2D4E3', network: 'BSC' as const },
@@ -333,7 +351,7 @@ const testBatchBalanceQuery = test('批量余额查询', async () => {
   
   console.log('  ℹ 批量查询', wallets.length, '个钱包')
   
-  const results = await manager.getBalances(wallets)
+  const results = await withRetry(() => manager.getBalances(wallets))
   
   if (results.length !== wallets.length) {
     throw new Error('返回结果数量不匹配')
@@ -351,7 +369,7 @@ const testBatchBalanceQuery = test('批量余额查询', async () => {
 
 // ============ 测试13: 地址验证 ============
 const testAddressValidation = test('地址验证', () => {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   // BSC地址验证
   const validBSC = '0x8894E0a0c962CB723c1976a4421c95949bE2D4E3'
@@ -384,7 +402,7 @@ const testAddressValidation = test('地址验证', () => {
 
 // ============ 测试14: 余额格式化 ============
 const testBalanceFormatting = test('余额格式化', () => {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   const testCases = [
     { input: '123.456789', decimals: 4, expected: '123.4568' },
@@ -406,7 +424,7 @@ const testBalanceFormatting = test('余额格式化', () => {
 
 // ============ 测试15: 错误处理 ============
 const testErrorHandling = test('错误处理', async () => {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   // 测试无效网络
   try {

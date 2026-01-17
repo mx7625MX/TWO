@@ -221,7 +221,7 @@ try {
 // 测试9: 地址验证
 console.log('\n测试9: 地址验证')
 try {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   // BSC
   if (!manager.validateAddress('0x8894E0a0c962CB723c1976a4421c95949bE2D4E3', 'BSC')) {
@@ -249,7 +249,7 @@ try {
 // 测试10: 余额格式化
 console.log('\n测试10: 余额格式化')
 try {
-  const manager = new WalletManager()
+  const manager = new WalletManager('test_password_123')
   
   const tests = [
     { input: '123.456789', decimals: 4, expected: '123.4568' },

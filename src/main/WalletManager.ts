@@ -1,11 +1,11 @@
 import { ethers } from 'ethers'
-import { Keypair, mnemonicToKeyPair } from '@solana/web3.js'
+import { Keypair } from '@solana/web3.js'
 import { v4 as uuidv4 } from 'uuid'
 import * as bip39 from 'bip39'
 import { encrypt, decrypt } from '../shared/cryptoUtils'
 import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
-import type { CreateWalletInput } from '../shared/types'
+import type { DatabaseWalletInput } from '../shared/types'
 
 /**
  * 钱包创建结果接口
@@ -388,8 +388,21 @@ export class WalletManager {
       // Solana 标准派生路径
       const path = derivationPath || "m/44'/501'/0'/0'"
 
-      // 使用 Solana 官方方法从助记词生成 Keypair
-      const keypair = mnemonicToKeyPair(mnemonic, path)
+      // 从助记词生成种子
+      const seed = bip39.mnemonicToSeedSync(mnemonic)
+
+      // 使用ethers的HDNodeWallet进行派生（兼容BIP44）
+      const hdNode = ethers.HDNodeWallet.fromSeed(seed)
+      const derived = hdNode.derivePath(path)
+
+      // 从派生的私钥创建Solana Keypair
+      // 需要将以太坊格式的私钥转换为Solana格式
+      const privateKeyBytes = Buffer.from(derived.privateKey.slice(2), 'hex')
+      
+      // Solana使用Ed25519，需要特殊处理
+      // 这里使用派生的私钥前32字节作为种子
+      const seed32 = privateKeyBytes.slice(0, 32)
+      const keypair = Keypair.fromSeed(seed32)
 
       return {
         address: keypair.publicKey.toBase58(),
@@ -512,7 +525,7 @@ export class WalletManager {
    * @param result 钱包创建结果
    * @returns 数据库输入对象
    */
-  toCreateWalletInput(result: WalletCreationResult): CreateWalletInput {
+  toDatabaseWalletInput(result: WalletCreationResult): DatabaseWalletInput {
     return {
       name: result.name,
       address: result.address,
@@ -636,5 +649,5 @@ export class WalletManager {
   }
 }
 
-// 导出单例实例（使用默认加密密钥）
-export const walletManager = new WalletManager()
+// 注意：不再导出单例，因为需要用户提供密码
+// 请在需要时创建新实例：new WalletManager(password)

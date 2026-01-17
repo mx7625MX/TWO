@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { CreateWalletInput, ImportWalletInput, ImportWalletResult, GetBalanceParams, IPCResponse, Wallet, WalletBalance } from '../shared/types'
+import type { CreateWalletInput, CreateWalletResult, ImportWalletInput, ImportWalletResult, GetBalanceParams, IPCResponse, Wallet, WalletBalance } from '../shared/types'
 
 // IPC通信频道常量
 const IPC_CHANNELS = {
@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /**
      * 创建新钱包
      */
-    create: (input: CreateWalletInput): Promise<IPCResponse<string>> => {
+    create: (input: CreateWalletInput): Promise<IPCResponse<CreateWalletResult>> => {
       return ipcRenderer.invoke(IPC_CHANNELS.WALLET_CREATE, input)
     },
 

@@ -8,7 +8,23 @@ export interface Wallet {
   created_at: number
 }
 
+// 创建钱包输入（只需要名称、网络和密码）
 export interface CreateWalletInput {
+  name: string
+  network: 'BSC' | 'Solana'
+  password: string  // 加密密码
+}
+
+// 创建钱包结果（系统生成地址和私钥）
+export interface CreateWalletResult {
+  id: string
+  address: string
+  privateKey: string
+  mnemonic?: string
+}
+
+// 数据库钱包输入
+export interface DatabaseWalletInput {
   name: string
   address: string
   network: 'BSC' | 'Solana'
@@ -53,7 +69,7 @@ export interface IPCResponse<T = any> {
 export interface ElectronAPI {
   // 钱包操作
   wallet: {
-    create: (input: CreateWalletInput) => Promise<IPCResponse<string>>
+    create: (input: CreateWalletInput) => Promise<IPCResponse<CreateWalletResult>>
     import: (input: ImportWalletInput) => Promise<IPCResponse<ImportWalletResult>>
     list: () => Promise<IPCResponse<Wallet[]>>
     getBalance: (params: GetBalanceParams) => Promise<IPCResponse<WalletBalance>>

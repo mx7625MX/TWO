@@ -5,6 +5,8 @@ import { getSolanaBalance } from '../shared/solanaUtils'
 import { WalletManager } from './WalletManager'
 import type { 
   CreateWalletInput,
+  CreateWalletResult,
+  DatabaseWalletInput,
   ImportWalletInput,
   ImportWalletResult,
   GetBalanceParams, 
@@ -48,20 +50,26 @@ export function registerIPCHandlers(): void {
   // 创建钱包
   ipcMain.handle(
     IPC_CHANNELS.WALLET_CREATE,
-    async (_event, input: CreateWalletInput): Promise<IPCResponse<string>> => {
+    async (_event, input: CreateWalletInput): Promise<IPCResponse<CreateWalletResult>> => {
       try {
-        console.log('IPC: 创建钱包请求', input)
+        console.log('IPC: 创建钱包请求', { name: input.name, network: input.network })
 
         // 验证输入
-        if (!input.name || !input.address || !input.network) {
+        if (!input.name || !input.network || !input.password) {
           return {
             success: false,
             error: '缺少必填字段',
           }
         }
 
+        // 创建WalletManager实例
+        const walletManager = new WalletManager(input.password)
+
+        // 创建钱包（生成地址和私钥）
+        const wallet = await walletManager.createWallet(input.name, input.network)
+
         // 检查地址是否已存在
-        const existingWallet = walletDB.getWalletByAddress(input.address)
+        const existingWallet = walletDB.getWalletByAddress(wallet.address)
         if (existingWallet) {
           return {
             success: false,
@@ -69,13 +77,29 @@ export function registerIPCHandlers(): void {
           }
         }
 
-        // 插入钱包
-        const walletId = walletDB.insertWallet(input)
+        // 准备数据库输入
+        const dbInput: DatabaseWalletInput = {
+          name: wallet.name,
+          address: wallet.address,
+          network: wallet.network,
+          encrypted_key: wallet.encrypted_key,
+        }
+
+        // 插入钱包到数据库
+        const walletId = walletDB.insertWallet(dbInput)
+
+        // 生成助记词（可选）
+        const mnemonic = walletManager.generateMnemonic(12)
 
         console.log('IPC: 钱包创建成功', walletId)
         return {
           success: true,
-          data: walletId,
+          data: {
+            id: walletId,
+            address: wallet.address,
+            privateKey: wallet.privateKey,
+            mnemonic: mnemonic,
+          },
         }
       } catch (error: any) {
         console.error('IPC: 创建钱包失败', error)
@@ -132,13 +156,13 @@ export function registerIPCHandlers(): void {
         )
 
         // 将钱包保存到数据库
-        const walletInput: CreateWalletInput = {
+        const dbInput: DatabaseWalletInput = {
           name: wallet.name,
           address: wallet.address,
           network: wallet.network,
           encrypted_key: wallet.encrypted_key,
         }
-        const walletId = walletDB.insertWallet(walletInput)
+        const walletId = walletDB.insertWallet(dbInput)
 
         console.log('IPC: 钱包导入成功', walletId)
         return {
