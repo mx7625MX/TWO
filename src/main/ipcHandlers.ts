@@ -3,6 +3,7 @@ import { walletDB } from './database'
 import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
 import { WalletManager } from './WalletManager'
+import { toUserFriendlyError, logError, ErrorFactory } from '../shared/errors'
 import type { 
   CreateWalletInput,
   CreateWalletResult,
@@ -98,10 +99,10 @@ export function registerIPCHandlers(): void {
           },
         }
       } catch (error: any) {
-        console.error('IPC: 创建钱包失败', error)
+        logError(error, 'IPC:WALLET_CREATE')
         return {
           success: false,
-          error: error.message || '创建钱包失败',
+          error: toUserFriendlyError(error, '创建钱包失败'),
         }
       }
     }
@@ -169,10 +170,10 @@ export function registerIPCHandlers(): void {
           },
         }
       } catch (error: any) {
-        console.error('IPC: 导入钱包失败', error)
+        logError(error, 'IPC:WALLET_IMPORT')
         return {
           success: false,
-          error: error.message || '导入钱包失败',
+          error: toUserFriendlyError(error, '导入钱包失败'),
         }
       }
     }

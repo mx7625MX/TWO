@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>0/47</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>0/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>0/46</span>
             </div>
         
             
@@ -158,12 +158,64 @@
 <a name='L93'></a><a href='#L93'>93</a>
 <a name='L94'></a><a href='#L94'>94</a>
 <a name='L95'></a><a href='#L95'>95</a>
-<a name='L96'></a><a href='#L96'>96</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -254,11 +306,37 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { ethers } from 'ethers'</span>
+<span class="cstat-no" title="statement not covered" >import { RPC_ENDPOINTS } from './constants'</span>
 &nbsp;
 /**
- * BSC网络配置
+ * 获取可用的BSC Provider（带故障切换）
+ * @returns Promise&lt;ethers.JsonRpcProvider&gt; 返回可用的Provider
+ * @throws Error 当所有RPC节点都不可用时抛出错误
  */
-const BSC_RPC_URL = <span class="cstat-no" title="statement not covered" >'https://bsc-dataseed1.binance.org'</span>
+async function <span class="fstat-no" title="function not covered" >getAvailableBSCProvider(</span>): Promise&lt;ethers.JsonRpcProvider&gt; {
+  const errors: string[] = <span class="cstat-no" title="statement not covered" >[]</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  for (const rpcUrl of RPC_ENDPOINTS.BSC) {</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      const provider = <span class="cstat-no" title="statement not covered" >new ethers.JsonRpcProvider(rpcUrl)</span>
+      // 测试连接（超时5秒）
+<span class="cstat-no" title="statement not covered" >      await Promise.race([</span>
+        provider.getBlockNumber(),
+        new Promise(<span class="fstat-no" title="function not covered" >(_</span>, reject) =&gt; 
+<span class="cstat-no" title="statement not covered" >          setTimeout(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >reject(new Error('连接超时')),</span> 5000)</span>
+        )
+      ])
+<span class="cstat-no" title="statement not covered" >      console.log(`成功连接到BSC节点: ${rpcUrl}`)</span>
+<span class="cstat-no" title="statement not covered" >      return provider</span>
+    } catch (error: any) {
+      const errorMsg = <span class="cstat-no" title="statement not covered" >`RPC节点 ${rpcUrl} 不可用: ${error.message}`</span>
+<span class="cstat-no" title="statement not covered" >      console.warn(errorMsg)</span>
+<span class="cstat-no" title="statement not covered" >      errors.push(errorMsg)</span>
+    }
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  throw new Error(`所有BSC RPC节点均不可用:\n${errors.join('\n')}`)</span>
+}
 &nbsp;
 /**
  * 查询BSC钱包余额
@@ -278,8 +356,8 @@ const BSC_RPC_URL = <span class="cstat-no" title="statement not covered" >'https
 <span class="cstat-no" title="statement not covered" >      throw new Error('无效的钱包地址格式')</span>
     }
 &nbsp;
-    // 创建BSC网络提供者
-    const provider = <span class="cstat-no" title="statement not covered" >new ethers.JsonRpcProvider(BSC_RPC_URL)</span>
+    // 获取可用的Provider
+    const provider = <span class="cstat-no" title="statement not covered" >await getAvailableBSCProvider()</span>
 &nbsp;
     // 查询余额（返回值为Wei单位）
     const balanceWei = <span class="cstat-no" title="statement not covered" >await provider.getBalance(address)</span>
@@ -355,7 +433,7 @@ const BSC_RPC_URL = <span class="cstat-no" title="statement not covered" >'https
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-17T14:58:49.098Z
+                at 2026-01-17T15:03:43.793Z
             </div>
         <script src="../prettify.js"></script>
         <script>

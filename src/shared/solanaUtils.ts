@@ -1,9 +1,35 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { RPC_ENDPOINTS } from './constants'
 
 /**
- * Solana网络配置
+ * 获取可用的Solana Connection（带故障切换）
+ * @returns Promise<Connection> 返回可用的Connection
+ * @throws Error 当所有RPC节点都不可用时抛出错误
  */
-const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com'
+async function getAvailableSolanaConnection(): Promise<Connection> {
+  const errors: string[] = []
+
+  for (const rpcUrl of RPC_ENDPOINTS.Solana) {
+    try {
+      const connection = new Connection(rpcUrl, 'confirmed')
+      // 测试连接（超时5秒）
+      await Promise.race([
+        connection.getVersion(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('连接超时')), 5000)
+        )
+      ])
+      console.log(`成功连接到Solana节点: ${rpcUrl}`)
+      return connection
+    } catch (error: any) {
+      const errorMsg = `RPC节点 ${rpcUrl} 不可用: ${error.message}`
+      console.warn(errorMsg)
+      errors.push(errorMsg)
+    }
+  }
+
+  throw new Error(`所有Solana RPC节点均不可用:\n${errors.join('\n')}`)
+}
 
 /**
  * 查询Solana钱包余额
@@ -23,9 +49,6 @@ export async function getSolanaBalance(address: string): Promise<string> {
       throw new Error('无效的Solana钱包地址格式')
     }
 
-    // 创建Solana连接
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed')
-
     // 尝试创建公钥对象（会验证地址有效性）
     let publicKey: PublicKey
     try {
@@ -33,6 +56,9 @@ export async function getSolanaBalance(address: string): Promise<string> {
     } catch (error) {
       throw new Error('无效的Solana钱包地址格式')
     }
+
+    // 获取可用的Connection
+    const connection = await getAvailableSolanaConnection()
 
     // 查询余额（返回值为lamports单位）
     const balanceLamports = await connection.getBalance(publicKey)

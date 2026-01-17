@@ -90,8 +90,18 @@ app.on('window-all-closed', () => {
 
 // 应用退出前清理
 app.on('before-quit', () => {
-  // 移除IPC处理器
-  removeIPCHandlers()
-  // 关闭数据库连接
-  walletDB.close()
+  try {
+    console.log('开始清理应用资源...')
+    
+    // 移除IPC处理器
+    removeIPCHandlers()
+    
+    // 关闭数据库连接
+    walletDB.close()
+    
+    console.log('应用资源清理完成')
+  } catch (error) {
+    console.error('清理应用资源时出错:', error)
+    // 即使清理失败也允许应用退出
+  }
 })

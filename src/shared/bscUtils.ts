@@ -1,9 +1,35 @@
 import { ethers } from 'ethers'
+import { RPC_ENDPOINTS } from './constants'
 
 /**
- * BSC网络配置
+ * 获取可用的BSC Provider（带故障切换）
+ * @returns Promise<ethers.JsonRpcProvider> 返回可用的Provider
+ * @throws Error 当所有RPC节点都不可用时抛出错误
  */
-const BSC_RPC_URL = 'https://bsc-dataseed1.binance.org'
+async function getAvailableBSCProvider(): Promise<ethers.JsonRpcProvider> {
+  const errors: string[] = []
+
+  for (const rpcUrl of RPC_ENDPOINTS.BSC) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpcUrl)
+      // 测试连接（超时5秒）
+      await Promise.race([
+        provider.getBlockNumber(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('连接超时')), 5000)
+        )
+      ])
+      console.log(`成功连接到BSC节点: ${rpcUrl}`)
+      return provider
+    } catch (error: any) {
+      const errorMsg = `RPC节点 ${rpcUrl} 不可用: ${error.message}`
+      console.warn(errorMsg)
+      errors.push(errorMsg)
+    }
+  }
+
+  throw new Error(`所有BSC RPC节点均不可用:\n${errors.join('\n')}`)
+}
 
 /**
  * 查询BSC钱包余额
@@ -23,8 +49,8 @@ export async function getBSCBalance(address: string): Promise<string> {
       throw new Error('无效的钱包地址格式')
     }
 
-    // 创建BSC网络提供者
-    const provider = new ethers.JsonRpcProvider(BSC_RPC_URL)
+    // 获取可用的Provider
+    const provider = await getAvailableBSCProvider()
 
     // 查询余额（返回值为Wei单位）
     const balanceWei = await provider.getBalance(address)
