@@ -50,12 +50,17 @@ export class WalletManager {
 
   /**
    * 构造函数
-   * @param encryptionPassword 用于加密私钥的密码（应从安全配置中获取）
+   * @param encryptionPassword 用于加密私钥的密码（必须提供）
    */
   constructor(encryptionPassword: string) {
     // 强制要求提供密码
     if (!encryptionPassword || encryptionPassword.trim() === '') {
       throw new Error('必须提供加密密码')
+    }
+    
+    // 验证密码强度（至少10位，包含大小写字母、数字和特殊字符）
+    if (!this.validatePasswordStrength(encryptionPassword)) {
+      throw new Error('密码强度不足：需要至少10个字符，包含大写字母、小写字母、数字和特殊字符')
     }
     
     this.encryptionKey = encryptionPassword
@@ -66,7 +71,7 @@ export class WalletManager {
    * @param password 密码
    * @returns 是否通过验证
    */
-  validatePasswordStrength(password: string): boolean {
+  private validatePasswordStrength(password: string): boolean {
     if (password.length < 10) return false
     if (!/[A-Z]/.test(password)) return false
     if (!/[a-z]/.test(password)) return false
@@ -111,12 +116,16 @@ export class WalletManager {
       // 加密私钥
       const encrypted_key = this.encryptPrivateKey(privateKey)
 
+      // 生成助记词（用户备份）
+      const mnemonic = this.generateMnemonic(12)
+
+      // 安全返回：不包含明文私钥
       return {
         id,
         name,
         address,
         network,
-        privateKey, // 仅在内存中返回，用于显示给用户备份
+        mnemonic, // 仅返回助记词供用户备份
         encrypted_key,
       }
     } catch (error: any) {

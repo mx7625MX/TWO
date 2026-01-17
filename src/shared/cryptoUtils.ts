@@ -7,9 +7,10 @@ import CryptoJS from 'crypto-js'
 
 /**
  * 加密私钥
+ * 使用PBKDF2密钥派生 + AES-256-CBC + 随机salt和IV
  * @param privateKey 明文私钥
  * @param password 加密密码
- * @returns 加密后的私钥字符串
+ * @returns 加密后的私钥字符串（Base64：salt + iv + ciphertext）
  */
 export function encrypt(privateKey: string, password: string): string {
   try {
@@ -20,11 +21,32 @@ export function encrypt(privateKey: string, password: string): string {
       throw new Error('密码不能为空')
     }
 
-    // 使用AES加密
-    const encrypted = CryptoJS.AES.encrypt(privateKey, password)
+    // 生成随机盐（16字节）
+    const salt = CryptoJS.lib.WordArray.random(128 / 8)
     
-    // 返回加密后的字符串（Base64格式）
-    return encrypted.toString()
+    // 使用PBKDF2派生密钥（100,000次迭代，防止暴力破解）
+    const key = CryptoJS.PBKDF2(password, salt, {
+      keySize: 256 / 32,
+      iterations: 100000
+    })
+    
+    // 生成随机IV（16字节）
+    const iv = CryptoJS.lib.WordArray.random(128 / 8)
+    
+    // 使用AES-256-CBC模式加密
+    const encrypted = CryptoJS.AES.encrypt(privateKey, key, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    })
+    
+    // 组合：salt(16) + iv(16) + ciphertext
+    const combined = CryptoJS.lib.WordArray.create()
+      .concat(salt)
+      .concat(iv)
+      .concat(encrypted.ciphertext)
+    
+    return combined.toString(CryptoJS.enc.Base64)
   } catch (error: any) {
     console.error('加密失败:', error)
     throw new Error(`加密失败: ${error.message}`)
@@ -33,7 +55,7 @@ export function encrypt(privateKey: string, password: string): string {
 
 /**
  * 解密私钥
- * @param encryptedKey 加密的私钥
+ * @param encryptedKey 加密的私钥（Base64：salt + iv + ciphertext）
  * @param password 解密密码
  * @returns 明文私钥
  */
@@ -46,10 +68,32 @@ export function decrypt(encryptedKey: string, password: string): string {
       throw new Error('密码不能为空')
     }
 
-    // 使用AES解密
-    const decrypted = CryptoJS.AES.decrypt(encryptedKey, password)
+    // 解析Base64
+    const combined = CryptoJS.enc.Base64.parse(encryptedKey)
     
-    // 转换为UTF8字符串
+    // 提取各部分（salt: 16字节=4 words, iv: 16字节=4 words）
+    const salt = CryptoJS.lib.WordArray.create(combined.words.slice(0, 4))
+    const iv = CryptoJS.lib.WordArray.create(combined.words.slice(4, 8))
+    const ciphertext = CryptoJS.lib.WordArray.create(combined.words.slice(8))
+    
+    // 使用相同参数派生密钥
+    const key = CryptoJS.PBKDF2(password, salt, {
+      keySize: 256 / 32,
+      iterations: 100000
+    })
+    
+    // 构造加密对象
+    const encryptedObj = CryptoJS.lib.CipherParams.create({
+      ciphertext: ciphertext
+    })
+    
+    // 解密
+    const decrypted = CryptoJS.AES.decrypt(encryptedObj, key, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    })
+    
     const plaintext = decrypted.toString(CryptoJS.enc.Utf8)
     
     if (!plaintext) {

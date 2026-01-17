@@ -15,12 +15,12 @@ export interface CreateWalletInput {
   password: string  // 加密密码
 }
 
-// 创建钱包结果（系统生成地址和私钥）
+// 创建钱包结果（系统生成地址，私钥已加密存储）
+// 注意：出于安全考虑，不返回明文私钥到前端
 export interface CreateWalletResult {
   id: string
   address: string
-  privateKey: string
-  mnemonic?: string
+  mnemonic?: string // 仅在创建时返回助记词供用户备份
 }
 
 // 数据库钱包输入

@@ -88,17 +88,13 @@ export function registerIPCHandlers(): void {
         // 插入钱包到数据库
         const walletId = walletDB.insertWallet(dbInput)
 
-        // 生成助记词（可选）
-        const mnemonic = walletManager.generateMnemonic(12)
-
         console.log('IPC: 钱包创建成功', walletId)
         return {
           success: true,
           data: {
             id: walletId,
             address: wallet.address,
-            privateKey: wallet.privateKey,
-            mnemonic: mnemonic,
+            mnemonic: wallet.mnemonic, // 仅返回助记词（如果有）
           },
         }
       } catch (error: any) {
