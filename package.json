@@ -1,7 +1,7 @@
 {
-  "name": "electron-react-vite-app",
+  "name": "meme-master-pro",
   "version": "1.0.0",
-  "description": "Electron + React + TypeScript + Vite Application",
+  "description": "Meme Master Pro - 专业级区块链钱包管理工具",
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
@@ -17,9 +17,14 @@
     "electron",
     "react",
     "typescript",
-    "vite"
+    "vite",
+    "blockchain",
+    "wallet",
+    "crypto",
+    "bsc",
+    "solana"
   ],
-  "author": "",
+  "author": "Meme Master Pro Team",
   "license": "MIT",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -54,8 +59,8 @@
     "uuid": "^13.0.0"
   },
   "build": {
-    "appId": "com.electron.app",
-    "productName": "ElectronApp",
+    "appId": "com.mememaster.pro",
+    "productName": "Meme Master Pro",
     "directories": {
       "output": "release"
     },
