@@ -107,8 +107,8 @@ export async function getSolanaBalanceBatch(
     return results
   }
 
-  // 创建连接
-  const connection = new Connection(SOLANA_RPC_URL, 'confirmed')
+  // 创建连接（使用故障切换）
+  const connection = await getAvailableSolanaConnection()
 
   // 验证并转换所有地址为PublicKey
   const validAddresses: Array<{ address: string; publicKey: PublicKey }> = []

@@ -118,27 +118,61 @@ export function generateRandomPassword(length: number = 32): string {
 }
 
 /**
- * 验证密码强度
+ * 常见弱密码列表
+ */
+const COMMON_PASSWORDS = [
+  'password', 'password123', '123456', '12345678', '123456789',
+  'qwerty', 'abc123', 'monkey', '1234567', 'letmein',
+  'trustno1', 'dragon', 'baseball', 'iloveyou', 'master',
+  'sunshine', 'ashley', 'bailey', 'passw0rd', 'shadow',
+  'admin', 'welcome', 'login', 'princess', 'solo'
+]
+
+/**
+ * 验证密码强度（增强版）
  * @param password 密码
- * @returns 密码强度分数（0-4）和描述
+ * @returns 密码强度分数和描述
  */
 export function validatePasswordStrength(password: string): {
   score: number
   description: string
 } {
-  let score = 0
+  // 检查常见密码
+  if (COMMON_PASSWORDS.includes(password.toLowerCase())) {
+    return { score: 0, description: '密码过于常见' }
+  }
 
-  if (password.length >= 8) score++
-  if (password.length >= 12) score++
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
-  if (/\d/.test(password)) score++
-  if (/[^a-zA-Z0-9]/.test(password)) score++
+  let score = 0
+  const length = password.length
+
+  // 长度评分
+  if (length >= 16) score += 3
+  else if (length >= 12) score += 2
+  else if (length >= 8) score += 1
+
+  // 字符类型
+  const hasLower = /[a-z]/.test(password)
+  const hasUpper = /[A-Z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSpecial = /[^a-zA-Z0-9]/.test(password)
+
+  const typeCount = [hasLower, hasUpper, hasNumber, hasSpecial].filter(Boolean).length
+  if (typeCount >= 4) score += 2
+  else if (typeCount >= 3) score += 1
+
+  // 连续字符检查（没有3个或更多连续相同字符）
+  if (!/(.)\1{2,}/.test(password)) score += 1
+
+  // 顺序字符检查（如 "123", "abc"）
+  const hasSequence = /(012|123|234|345|456|567|678|789|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(password)
+  if (!hasSequence) score += 1
 
   const descriptions = ['非常弱', '弱', '中等', '强', '非常强']
+  const finalScore = Math.min(score, 4)
   
   return {
-    score: Math.min(score, 4),
-    description: descriptions[Math.min(score, 4)],
+    score: finalScore,
+    description: descriptions[finalScore]
   }
 }
 

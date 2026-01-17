@@ -510,18 +510,40 @@ export class WalletManager {
   }
 
   /**
-   * 验证钱包地址格式
+   * 验证钱包地址格式（增强版）
    * @param address 钱包地址
    * @param network 网络类型
    * @returns 是否有效
    */
   validateAddress(address: string, network: 'BSC' | 'Solana'): boolean {
     try {
+      if (!address || typeof address !== 'string') {
+        return false
+      }
+
       if (network === 'BSC') {
+        // 验证以太坊地址格式（包含校验和）
+        if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+          return false
+        }
+        // ethers.isAddress 会验证校验和
         return ethers.isAddress(address)
       } else if (network === 'Solana') {
-        // Solana地址验证
-        return address.length >= 32 && address.length <= 44
+        // Solana地址长度应为32-44字符，Base58编码
+        if (address.length < 32 || address.length > 44) {
+          return false
+        }
+        // 检查是否仅包含Base58字符
+        if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(address)) {
+          return false
+        }
+        // 尝试创建PublicKey对象验证
+        try {
+          new PublicKey(address)
+          return true
+        } catch {
+          return false
+        }
       }
       return false
     } catch {
@@ -599,36 +621,58 @@ export class WalletManager {
   }
 
   /**
-   * 批量查询钱包余额
+   * 批量查询钱包余额（带并发控制）
    * @param wallets 钱包地址和网络类型列表
+   * @param maxConcurrent 最大并发数（默认5）
    * @returns 余额信息列表
    */
   async getBalances(
-    wallets: Array<{ address: string; network: 'BSC' | 'Solana' }>
+    wallets: Array<{ address: string; network: 'BSC' | 'Solana' }>,
+    maxConcurrent: number = 5
   ): Promise<BalanceResult[]> {
     try {
       const results: BalanceResult[] = []
+      const executing: Promise<void>[] = []
       
-      // 串行查询，避免请求过快
       for (const wallet of wallets) {
-        try {
-          const balance = await this.getBalance(wallet.address, wallet.network)
-          results.push(balance)
-          
-          // 添加延迟，避免请求过快
-          await new Promise(resolve => setTimeout(resolve, 300))
-        } catch (error: any) {
-          console.error(`查询${wallet.address}余额失败:`, error.message)
-          // 失败时返回0余额
-          results.push({
-            address: wallet.address,
-            network: wallet.network,
-            nativeBalance: '0',
-            nativeSymbol: wallet.network === 'BSC' ? 'BNB' : 'SOL',
-            tokenBalances: [],
+        // 创建查询promise
+        const promise = (async () => {
+          try {
+            const balance = await this.getBalance(wallet.address, wallet.network)
+            results.push(balance)
+          } catch (error: any) {
+            console.error(`查询${wallet.address}余额失败:`, error.message)
+            // 失败时返回0余额
+            results.push({
+              address: wallet.address,
+              network: wallet.network,
+              nativeBalance: '0',
+              nativeSymbol: wallet.network === 'BSC' ? 'BNB' : 'SOL',
+              tokenBalances: [],
+            })
+          }
+        })()
+        
+        executing.push(promise)
+        
+        // 控制并发数
+        if (executing.length >= maxConcurrent) {
+          await Promise.race(executing)
+          // 移除已完成的promise
+          const completed = executing.filter(p => {
+            return Promise.race([p, Promise.resolve('pending')]).then(
+              val => val !== 'pending'
+            )
+          })
+          completed.forEach(p => {
+            const index = executing.indexOf(p)
+            if (index > -1) executing.splice(index, 1)
           })
         }
       }
+      
+      // 等待所有剩余请求完成
+      await Promise.all(executing)
       
       return results
     } catch (error: any) {
