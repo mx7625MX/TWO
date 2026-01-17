@@ -1,11 +1,68 @@
 # 钱包管理功能测试指南
 
+## 测试环境要求
+
+### 必需软件版本
+
+- **Node.js**: ≥ 18.0.0（推荐 v24.11.1）
+- **npm**: ≥ 9.0.0（当前 11.6.2）
+- **tsx**: ≥ 4.0.0（当前 v4.21.0）
+- **TypeScript**: ≥ 5.0.0
+
+### 验证环境
+
+```bash
+node --version    # 检查 Node.js 版本
+npm --version     # 检查 npm 版本
+npx tsx --version # 检查 tsx 版本
+```
+
+### 安装依赖
+
+```bash
+# 克隆项目
+git clone https://github.com/mx7625MX/TWO.git
+cd TWO
+
+# 安装所有依赖
+npm install
+
+# 验证安装
+npm test
+```
+
 ## 快速开始
 
 ### 运行快速测试（推荐）
 
 ```bash
 npm test
+```
+
+**命令配置** (package.json):
+```json
+{
+  "scripts": {
+    "test": "npx tsx src/tests/quick-test.ts",
+    "test:full": "npx tsx src/tests/wallet-manager.test.ts"
+  }
+}
+```
+
+这将运行不依赖网络的本地测试，包括
+
+```bash
+npm test
+```
+
+**命令配置** (package.json):
+```json
+{
+  "scripts": {
+    "test": "npx tsx src/tests/quick-test.ts",
+    "test:full": "npx tsx src/tests/wallet-manager.test.ts"
+  }
+}
 ```
 
 这将运行不依赖网络的本地测试，包括：
@@ -231,8 +288,116 @@ A:
 3. 创建Issue描述问题
 4. 提供测试环境信息
 
+## CI/CD 集成
+
+### GitHub Actions 配置
+
+创建 `.github/workflows/test.yml`：
+
+```yaml
+name: 测试
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 24.x]
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 安装依赖
+      run: npm ci
+    
+    - name: 运行快速测试
+      run: npm test
+    
+    - name: 运行完整测试
+      run: npm run test:full
+      continue-on-error: true  # 网络测试可能失败
+    
+    - name: 上传测试报告
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: test-results/
+```
+
+### GitLab CI 配置
+
+创建 `.gitlab-ci.yml`：
+
+```yaml
+stages:
+  - test
+
+test:quick:
+  stage: test
+  image: node:24
+  script:
+    - npm ci
+    - npm test
+  only:
+    - merge_requests
+    - main
+
+test:full:
+  stage: test
+  image: node:24
+  script:
+    - npm ci
+    - npm run test:full
+  allow_failure: true  # 网络测试可能失败
+  only:
+    - main
+```
+
+### 本地 Pre-commit Hook
+
+创建 `.husky/pre-commit`：
+
+```bash
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# 运行快速测试
+npm test
+
+# 如果测试失败，阻止提交
+if [ $? -ne 0 ]; then
+  echo "❌ 测试失败，提交已取消"
+  exit 1
+fi
+
+echo "✅ 测试通过，继续提交"
+```
+
+安装 husky：
+```bash
+npm install -D husky
+npx husky install
+npx husky add .husky/pre-commit "npm test"
+```
+
 ---
 
 **最后更新**: 2026-01-17  
 **测试版本**: v1.0.0  
+**环境**: Node.js v24.11.1, npm 11.6.2, tsx v4.21.0  
 **状态**: ✅ 所有核心功能测试通过
