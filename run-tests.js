@@ -8,7 +8,7 @@
 process.env.NODE_ENV = 'test'
 
 // 导入测试
-const { runAllTests } = require('../dist/tests/wallet-manager.test.js')
+const { runAllTests } = require('./dist/tests/wallet-manager.test.js')
 
 console.log('准备运行测试...\n')
 

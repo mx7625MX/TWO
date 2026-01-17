@@ -4,7 +4,7 @@
  * 加密功能快速测试脚本
  */
 
-const { encrypt, decrypt, validatePasswordStrength } = require('../dist/shared/cryptoUtils')
+const { encrypt, decrypt, validatePasswordStrength } = require('./dist/shared/cryptoUtils')
 
 console.log('=== 加密工具测试 ===\n')
 
