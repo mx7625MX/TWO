@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { RPC_ENDPOINTS } from './constants'
+import { RPC_ENDPOINTS, CONFIG } from './constants'
 
 /**
  * 获取可用的BSC Provider（带故障切换）
@@ -12,11 +12,11 @@ async function getAvailableBSCProvider(): Promise<ethers.JsonRpcProvider> {
   for (const rpcUrl of RPC_ENDPOINTS.BSC) {
     try {
       const provider = new ethers.JsonRpcProvider(rpcUrl)
-      // 测试连接（超时5秒）
+      // 测试连接
       await Promise.race([
         provider.getBlockNumber(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('连接超时')), 5000)
+          setTimeout(() => reject(new Error('连接超时')), CONFIG.RPC_CONNECTION_TIMEOUT)
         )
       ])
       console.log(`成功连接到BSC节点: ${rpcUrl}`)

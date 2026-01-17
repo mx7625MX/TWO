@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import { app } from 'electron'
+import { WALLET_LIMITS } from '../shared/constants'
 import type { Wallet, DatabaseWalletInput } from '../shared/types'
 
 /**
@@ -73,8 +74,8 @@ class WalletDatabase {
 
     // 检查钱包总数
     const count = this.db.prepare('SELECT COUNT(*) as count FROM wallets').get() as { count: number }
-    if (count.count >= 100) {
-      throw new Error('钱包数量已达上限（100个）')
+    if (count.count >= WALLET_LIMITS.MAX_WALLETS) {
+      throw new Error(`钱包数量已达上限（${WALLET_LIMITS.MAX_WALLETS}个）`)
     }
 
     const id = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`

@@ -1,5 +1,5 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { RPC_ENDPOINTS } from './constants'
+import { RPC_ENDPOINTS, CONFIG } from './constants'
 
 /**
  * 获取可用的Solana Connection（带故障切换）
@@ -12,11 +12,11 @@ async function getAvailableSolanaConnection(): Promise<Connection> {
   for (const rpcUrl of RPC_ENDPOINTS.Solana) {
     try {
       const connection = new Connection(rpcUrl, 'confirmed')
-      // 测试连接（超时5秒）
+      // 测试连接
       await Promise.race([
         connection.getVersion(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('连接超时')), 5000)
+          setTimeout(() => reject(new Error('连接超时')), CONFIG.RPC_CONNECTION_TIMEOUT)
         )
       ])
       console.log(`成功连接到Solana节点: ${rpcUrl}`)

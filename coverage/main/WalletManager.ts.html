@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/215</span>
+                <span class='fraction'>0/216</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/208</span>
+                <span class='fraction'>0/209</span>
             </div>
         
             
@@ -769,13 +769,16 @@
 <a name='L704'></a><a href='#L704'>704</a>
 <a name='L705'></a><a href='#L705'>705</a>
 <a name='L706'></a><a href='#L706'>706</a>
-<a name='L707'></a><a href='#L707'>707</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L707'></a><a href='#L707'>707</a>
+<a name='L708'></a><a href='#L708'>708</a>
+<a name='L709'></a><a href='#L709'>709</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1302,6 +1305,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1476,12 +1480,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { ethers } from 'ethers'</span>
-<span class="cstat-no" title="statement not covered" >import { Keypair } from '@solana/web3.js'</span>
+<span class="cstat-no" title="statement not covered" >import { Keypair, PublicKey } from '@solana/web3.js'</span>
 <span class="cstat-no" title="statement not covered" >import { v4 as uuidv4 } from 'uuid'</span>
 <span class="cstat-no" title="statement not covered" >import * as bip39 from 'bip39'</span>
 <span class="cstat-no" title="statement not covered" >import { encrypt, decrypt } from '../shared/cryptoUtils'</span>
 <span class="cstat-no" title="statement not covered" >import { getBSCBalance } from '../shared/bscUtils'</span>
 <span class="cstat-no" title="statement not covered" >import { getSolanaBalance } from '../shared/solanaUtils'</span>
+<span class="cstat-no" title="statement not covered" >import { CONFIG, WALLET_LIMITS } from '../shared/constants'</span>
 import type { DatabaseWalletInput } from '../shared/types'
 &nbsp;
 /**
@@ -1730,8 +1735,8 @@ export interface TokenBalance {
 <span class="cstat-no" title="statement not covered" >        cleanKey = '0x' + cleanKey</span>
       }
 &nbsp;
-      // 验证私钥长度（应为66个字符，包括0x）
-<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (cleanKey.length !== 66) {</span>
+      // 验证私钥长度
+<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (cleanKey.length !== CONFIG.KEY_FORMATS.BSC_PRIVATE_KEY_LENGTH) {</span>
 <span class="cstat-no" title="statement not covered" >        throw new Error('BSC私钥长度无效，应为64个十六进制字符')</span>
       }
 &nbsp;
@@ -1782,9 +1787,9 @@ export interface TokenBalance {
         }
       }
 &nbsp;
-      // 验证私钥长度（Solana私钥应为64字节）
-<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (secretKey.length !== 64) {</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error(`Solana私钥长度无效，应为64字节，当前为${secretKey.length}字节`)</span>
+      // 验证私钥长度
+<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (secretKey.length !== CONFIG.KEY_FORMATS.SOLANA_PRIVATE_KEY_LENGTH) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Solana私钥长度无效，应为${CONFIG.KEY_FORMATS.SOLANA_PRIVATE_KEY_LENGTH}字节，当前为${secretKey.length}字节`)</span>
       }
 &nbsp;
       // 从私钥创建Keypair
@@ -1906,7 +1911,7 @@ export interface TokenBalance {
    */
 <span class="fstat-no" title="function not covered" >  generateMnemonic(</span>wordCount: 12 | 24 = <span class="branch-0 cbranch-no" title="branch not covered" >12)</span>: string {
 <span class="cstat-no" title="statement not covered" >    try {</span>
-      const strength = <span class="cstat-no" title="statement not covered" >wordCount === 12 ? 128 : 256</span>
+      const strength = <span class="cstat-no" title="statement not covered" >wordCount === 12 ? CONFIG.MNEMONIC.STRENGTH_128 : CONFIG.MNEMONIC.STRENGTH_256</span>
 <span class="cstat-no" title="statement not covered" >      return bip39.generateMnemonic(strength)</span>
     } catch (error: any) {
 <span class="cstat-no" title="statement not covered" >      throw new Error(`生成助记词失败: ${error.message}`)</span>
@@ -2006,8 +2011,9 @@ export interface TokenBalance {
         // ethers.isAddress 会验证校验和
 <span class="cstat-no" title="statement not covered" >        return ethers.isAddress(address)</span>
       } else <span class="cstat-no" title="statement not covered" ><span class="missing-if-branch" title="if path not taken" >I</span>if (network === 'Solana') {</span>
-        // Solana地址长度应为32-44字符，Base58编码
-<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (address.length &lt; 32 || address.length &gt; 44) {</span>
+        // Solana地址长度应为Base58编码
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (address.length &lt; CONFIG.KEY_FORMATS.SOLANA_ADDRESS_MIN_LENGTH || </span>
+            address.length &gt; CONFIG.KEY_FORMATS.SOLANA_ADDRESS_MAX_LENGTH) {
 <span class="cstat-no" title="statement not covered" >          return false</span>
         }
         // 检查是否仅包含Base58字符
@@ -2105,7 +2111,7 @@ export interface TokenBalance {
    */
 <span class="fstat-no" title="function not covered" >  async </span>getBalances(
     wallets: Array&lt;{ address: string; network: 'BSC' | 'Solana' }&gt;,
-    maxConcurrent: number = <span class="branch-0 cbranch-no" title="branch not covered" >5</span>
+    maxConcurrent: number = <span class="branch-0 cbranch-no" title="branch not covered" >CONFIG.CONCURRENT_QUERIES</span>
   ): Promise&lt;BalanceResult[]&gt; {
 <span class="cstat-no" title="statement not covered" >    try {</span>
       const results: BalanceResult[] = <span class="cstat-no" title="statement not covered" >[]</span>
@@ -2161,10 +2167,10 @@ export interface TokenBalance {
   /**
    * 格式化余额显示
    * @param balance 余额
-   * @param decimals 小数位数（默认4位）
+   * @param decimals 小数位数
    * @returns 格式化的余额字符串
    */
-<span class="fstat-no" title="function not covered" >  formatBalance(</span>balance: string, decimals: number = <span class="branch-0 cbranch-no" title="branch not covered" >4)</span>: string {
+<span class="fstat-no" title="function not covered" >  formatBalance(</span>balance: string, decimals: number = <span class="branch-0 cbranch-no" title="branch not covered" >CONFIG.BALANCE_DISPLAY_DECIMALS)</span>: string {
 <span class="cstat-no" title="statement not covered" >    try {</span>
       const num = <span class="cstat-no" title="statement not covered" >parseFloat(balance)</span>
 <span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (isNaN(num)) {</span>
@@ -2188,7 +2194,7 @@ export interface TokenBalance {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-17T15:11:21.471Z
+                at 2026-01-17T15:33:34.174Z
             </div>
         <script src="../prettify.js"></script>
         <script>

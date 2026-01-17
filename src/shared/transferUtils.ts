@@ -1,5 +1,6 @@
 import { ethers } from 'ethers'
 import { Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { CONFIG } from './constants'
 
 /**
  * 转账配置
@@ -136,7 +137,7 @@ export async function transferSolana(config: TransferConfig): Promise<TransferRe
     const balance = await connection.getBalance(fromKeypair.publicKey)
     const minRentExemption = await connection.getMinimumBalanceForRentExemption(0)
     
-    if (balance < amountLamports + 5000) { // 5000 lamports for tx fee
+    if (balance < amountLamports + CONFIG.ESTIMATED_FEES.SOLANA_TX_FEE) {
       throw new Error(`余额不足。需要至少 ${(amountLamports + minRentExemption) / LAMPORTS_PER_SOL} SOL`)
     }
 
@@ -256,8 +257,8 @@ export async function estimateSolanaFee(): Promise<string> {
     const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed')
     const recentBlockhash = await connection.getLatestBlockhash()
     
-    // Solana转账通常是5000 lamports
-    return (5000 / LAMPORTS_PER_SOL).toString()
+    // Solana转账费用
+    return (CONFIG.ESTIMATED_FEES.SOLANA_TX_FEE / LAMPORTS_PER_SOL).toString()
   } catch (error) {
     console.error('估算Solana费用失败:', error)
     return '0.000005' // 默认估算值

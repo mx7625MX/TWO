@@ -4,6 +4,7 @@ import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
 import { WalletManager } from './WalletManager'
 import { toUserFriendlyError, logError, ErrorFactory } from '../shared/errors'
+import { CONFIG } from '../shared/constants'
 import type { 
   CreateWalletInput,
   CreateWalletResult,
@@ -219,17 +220,17 @@ export function registerIPCHandlers(): void {
 
         let balance: string
 
-        // 根据网络类型查询余额（带10秒超时）
+        // 根据网络类型查询余额（带超时）
         if (params.network === 'BSC') {
           balance = await withTimeout(
             getBSCBalance(params.address),
-            10000,
+            CONFIG.BALANCE_QUERY_TIMEOUT,
             '余额查询超时，请检查网络连接'
           )
         } else if (params.network === 'Solana') {
           balance = await withTimeout(
             getSolanaBalance(params.address),
-            10000,
+            CONFIG.BALANCE_QUERY_TIMEOUT,
             '余额查询超时，请检查网络连接'
           )
         } else {

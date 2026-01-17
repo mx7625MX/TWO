@@ -1,4 +1,5 @@
 import CryptoJS from 'crypto-js'
+import { CONFIG, CRYPTO_CONFIG } from './constants'
 
 /**
  * 加密工具类
@@ -21,17 +22,17 @@ export function encrypt(privateKey: string, password: string): string {
       throw new Error('密码不能为空')
     }
 
-    // 生成随机盐（16字节）
-    const salt = CryptoJS.lib.WordArray.random(128 / 8)
+    // 生成随机盐
+    const salt = CryptoJS.lib.WordArray.random(CRYPTO_CONFIG.SALT_LENGTH)
     
-    // 使用PBKDF2派生密钥（100,000次迭代，防止暴力破解）
+    // 使用PBKDF2派生密钥（防止暴力破解）
     const key = CryptoJS.PBKDF2(password, salt, {
-      keySize: 256 / 32,
-      iterations: 100000
+      keySize: CRYPTO_CONFIG.KEY_LENGTH / 32,
+      iterations: CRYPTO_CONFIG.PBKDF2_ITERATIONS
     })
     
-    // 生成随机IV（16字节）
-    const iv = CryptoJS.lib.WordArray.random(128 / 8)
+    // 生成随机IV
+    const iv = CryptoJS.lib.WordArray.random(CRYPTO_CONFIG.IV_LENGTH)
     
     // 使用AES-256-CBC模式加密
     const encrypted = CryptoJS.AES.encrypt(privateKey, key, {
@@ -78,8 +79,8 @@ export function decrypt(encryptedKey: string, password: string): string {
     
     // 使用相同参数派生密钥
     const key = CryptoJS.PBKDF2(password, salt, {
-      keySize: 256 / 32,
-      iterations: 100000
+      keySize: CRYPTO_CONFIG.KEY_LENGTH / 32,
+      iterations: CRYPTO_CONFIG.PBKDF2_ITERATIONS
     })
     
     // 构造加密对象

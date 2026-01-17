@@ -1,10 +1,11 @@
 import { ethers } from 'ethers'
-import { Keypair } from '@solana/web3.js'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { v4 as uuidv4 } from 'uuid'
 import * as bip39 from 'bip39'
 import { encrypt, decrypt } from '../shared/cryptoUtils'
 import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
+import { CONFIG, WALLET_LIMITS } from '../shared/constants'
 import type { DatabaseWalletInput } from '../shared/types'
 
 /**
@@ -253,8 +254,8 @@ export class WalletManager {
         cleanKey = '0x' + cleanKey
       }
 
-      // 验证私钥长度（应为66个字符，包括0x）
-      if (cleanKey.length !== 66) {
+      // 验证私钥长度
+      if (cleanKey.length !== CONFIG.KEY_FORMATS.BSC_PRIVATE_KEY_LENGTH) {
         throw new Error('BSC私钥长度无效，应为64个十六进制字符')
       }
 
@@ -305,9 +306,9 @@ export class WalletManager {
         }
       }
 
-      // 验证私钥长度（Solana私钥应为64字节）
-      if (secretKey.length !== 64) {
-        throw new Error(`Solana私钥长度无效，应为64字节，当前为${secretKey.length}字节`)
+      // 验证私钥长度
+      if (secretKey.length !== CONFIG.KEY_FORMATS.SOLANA_PRIVATE_KEY_LENGTH) {
+        throw new Error(`Solana私钥长度无效，应为${CONFIG.KEY_FORMATS.SOLANA_PRIVATE_KEY_LENGTH}字节，当前为${secretKey.length}字节`)
       }
 
       // 从私钥创建Keypair
@@ -429,7 +430,7 @@ export class WalletManager {
    */
   generateMnemonic(wordCount: 12 | 24 = 12): string {
     try {
-      const strength = wordCount === 12 ? 128 : 256
+      const strength = wordCount === 12 ? CONFIG.MNEMONIC.STRENGTH_128 : CONFIG.MNEMONIC.STRENGTH_256
       return bip39.generateMnemonic(strength)
     } catch (error: any) {
       throw new Error(`生成助记词失败: ${error.message}`)
@@ -529,8 +530,9 @@ export class WalletManager {
         // ethers.isAddress 会验证校验和
         return ethers.isAddress(address)
       } else if (network === 'Solana') {
-        // Solana地址长度应为32-44字符，Base58编码
-        if (address.length < 32 || address.length > 44) {
+        // Solana地址长度应为Base58编码
+        if (address.length < CONFIG.KEY_FORMATS.SOLANA_ADDRESS_MIN_LENGTH || 
+            address.length > CONFIG.KEY_FORMATS.SOLANA_ADDRESS_MAX_LENGTH) {
           return false
         }
         // 检查是否仅包含Base58字符
@@ -628,7 +630,7 @@ export class WalletManager {
    */
   async getBalances(
     wallets: Array<{ address: string; network: 'BSC' | 'Solana' }>,
-    maxConcurrent: number = 5
+    maxConcurrent: number = CONFIG.CONCURRENT_QUERIES
   ): Promise<BalanceResult[]> {
     try {
       const results: BalanceResult[] = []
@@ -684,10 +686,10 @@ export class WalletManager {
   /**
    * 格式化余额显示
    * @param balance 余额
-   * @param decimals 小数位数（默认4位）
+   * @param decimals 小数位数
    * @returns 格式化的余额字符串
    */
-  formatBalance(balance: string, decimals: number = 4): string {
+  formatBalance(balance: string, decimals: number = CONFIG.BALANCE_DISPLAY_DECIMALS): string {
     try {
       const num = parseFloat(balance)
       if (isNaN(num)) {
