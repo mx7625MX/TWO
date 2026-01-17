@@ -3,7 +3,7 @@ import { walletDB } from './database'
 import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
 import { WalletManager } from './WalletManager'
-import { toUserFriendlyError, logError, ErrorFactory } from '../shared/errors'
+import { toUserFriendlyError, logError } from '../shared/errors'
 import { CONFIG } from '../shared/constants'
 import type { 
   CreateWalletInput,

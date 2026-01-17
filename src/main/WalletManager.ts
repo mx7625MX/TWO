@@ -18,6 +18,7 @@ export interface WalletCreationResult {
   network: 'BSC' | 'Solana'
   privateKey: string // 明文私钥（仅在内存中，不应持久化）
   encrypted_key: string // 加密后的私钥
+  mnemonic?: string // 助记词（可选，用于备份）
 }
 
 /**
