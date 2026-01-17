@@ -5,20 +5,16 @@ import * as bip39 from 'bip39'
 import { encrypt, decrypt } from '../shared/cryptoUtils'
 import { getBSCBalance } from '../shared/bscUtils'
 import { getSolanaBalance } from '../shared/solanaUtils'
-import { CONFIG, WALLET_LIMITS } from '../shared/constants'
-import type { DatabaseWalletInput } from '../shared/types'
+import { CONFIG } from '../shared/constants'
+import type { DatabaseWalletInput, CreateWalletResult } from '../shared/types'
 
 /**
- * 钱包创建结果接口
+ * 内部钱包创建结果接口（包含所有字段用于数据库保存）
  */
-export interface WalletCreationResult {
-  id: string
+interface InternalWalletResult extends CreateWalletResult {
   name: string
-  address: string
   network: 'BSC' | 'Solana'
-  privateKey: string // 明文私钥（仅在内存中，不应持久化）
-  encrypted_key: string // 加密后的私钥
-  mnemonic?: string // 助记词（可选，用于备份）
+  encrypted_key: string
 }
 
 /**
@@ -88,7 +84,7 @@ export class WalletManager {
    * @param network 网络类型（BSC或Solana）
    * @returns 钱包创建结果
    */
-  async createWallet(name: string, network: 'BSC' | 'Solana'): Promise<WalletCreationResult> {
+  async createWallet(name: string, network: 'BSC' | 'Solana'): Promise<InternalWalletResult> {
     try {
       // 生成唯一ID
       const id = uuidv4()
@@ -121,7 +117,7 @@ export class WalletManager {
       // 生成助记词（用户备份）
       const mnemonic = this.generateMnemonic(12)
 
-      // 安全返回：不包含明文私钥
+      // 安全返回：不包含明文私钥，但包含加密后的私钥
       return {
         id,
         name,
@@ -147,8 +143,8 @@ export class WalletManager {
     count: number,
     network: 'BSC' | 'Solana',
     namePrefix: string = '钱包'
-  ): Promise<WalletCreationResult[]> {
-    const wallets: WalletCreationResult[] = []
+  ): Promise<InternalWalletResult[]> {
+    const wallets: InternalWalletResult[] = []
 
     for (let i = 1; i <= count; i++) {
       const wallet = await this.createWallet(`${namePrefix}_${i}`, network)
@@ -174,7 +170,7 @@ export class WalletManager {
     importData: string,
     importType: 'privateKey' | 'mnemonic' = 'privateKey',
     derivationPath?: string
-  ): Promise<WalletCreationResult> {
+  ): Promise<InternalWalletResult & { privateKey: string }> {
     try {
       // 生成唯一ID
       const id = uuidv4()
@@ -559,7 +555,7 @@ export class WalletManager {
    * @param result 钱包创建结果
    * @returns 数据库输入对象
    */
-  toDatabaseWalletInput(result: WalletCreationResult): DatabaseWalletInput {
+  toDatabaseWalletInput(result: InternalWalletResult): DatabaseWalletInput {
     return {
       name: result.name,
       address: result.address,

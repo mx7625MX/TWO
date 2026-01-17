@@ -77,25 +77,26 @@ function WalletListManager() {
   }, [])
 
   // 创建新钱包
-  const handleCreateWallet = async (values: { name: string; network: 'BSC' | 'Solana' }) => {
+  const handleCreateWallet = async (values: { name: string; network: 'BSC' | 'Solana'; password: string }) => {
     setCreatingWallet(true)
     try {
       // 调用真实的IPC方法创建钱包
       const response = await window.electronAPI.wallet.create({
         name: values.name,
         network: values.network,
+        password: values.password,
       })
 
       if (response.success && response.data) {
         // 显示真实的钱包信息
         setNewWalletInfo({
           address: response.data.address,
-          privateKey: response.data.privateKey,
+          privateKey: '', // 不再返回明文私钥
           mnemonic: response.data.mnemonic,
         })
         message.success('钱包创建成功！')
         createForm.resetFields()
-        // 不立即关闭modal，让用户看到私钥和助记词
+        // 不立即关闭modal，让用户看到助记词
       } else {
         message.error(response.error || '创建钱包失败')
       }
@@ -547,9 +548,44 @@ function WalletListManager() {
               </Radio.Group>
             </Form.Item>
 
+            <Form.Item
+              name="password"
+              label="加密密码"
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 10, message: '密码至少10个字符' },
+                {
+                  pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{10,}$/,
+                  message: '密码必须包含大小写字母、数字和特殊字符'
+                }
+              ]}
+              extra="此密码用于加密保护您的私钥，请务必记住"
+            >
+              <Input.Password placeholder="至少10位，包含大小写字母、数字和特殊字符" />
+            </Form.Item>
+
+            <Form.Item
+              name="confirmPassword"
+              label="确认密码"
+              dependencies={['password']}
+              rules={[
+                { required: true, message: '请确认密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('两次输入的密码不一致'))
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="再次输入密码" />
+            </Form.Item>
+
             <Alert
               message="安全提示"
-              description="创建钱包后，请务必备份您的私钥和助记词，并妥善保管。私钥一旦丢失将无法找回！"
+              description="创建钱包后，请务必备份您的助记词，并妥善保管您的密码。密码和助记词一旦丢失将无法找回！"
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}

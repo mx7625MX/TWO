@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js'
-import { CONFIG, CRYPTO_CONFIG } from './constants'
+import { CRYPTO_CONFIG } from './constants'
 
 /**
  * 加密工具类

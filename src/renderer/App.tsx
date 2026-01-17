@@ -24,9 +24,9 @@ import './App.css'
 import Login from './Login'
 import WalletList from './WalletList'
 import MultiChainBalanceChecker from './MultiChainBalanceChecker'
-import LaunchToken from './LaunchToken'
-import BundleBuy from './BundleBuy'
-import LaunchTasks from './LaunchTasks'
+// import LaunchToken from './LaunchToken' // 临时注释：组件未实现
+// import BundleBuy from './BundleBuy' // 临时注释：组件未实现
+// import LaunchTasks from './LaunchTasks' // 临时注释：该组件使用了不存在的 shadcn/ui 库
 
 const { Header, Sider, Content } = Layout
 const { TabPane } = Tabs
@@ -178,36 +178,39 @@ const MainLayout: React.FC = () => {
       ),
       children: <MultiChainBalanceChecker />
     },
-    {
-      key: 'launch',
-      label: (
-        <span>
-          <RocketOutlined />
-          发币
-        </span>
-      ),
-      children: <LaunchToken />
-    },
-    {
-      key: 'bundle',
-      label: (
-        <span>
-          <ShoppingCartOutlined />
-          批量买入
-        </span>
-      ),
-      children: <BundleBuy />
-    },
-    {
-      key: 'tasks',
-      label: (
-        <span>
-          <UnorderedListOutlined />
-          任务列表
-        </span>
-      ),
-      children: <LaunchTasks />
-    }
+    // 临时注释：LaunchToken 组件未实现
+    // {
+    //   key: 'launch',
+    //   label: (
+    //     <span>
+    //       <RocketOutlined />
+    //       发币
+    //     </span>
+    //   ),
+    //   children: <LaunchToken />
+    // },
+    // 临时注释：BundleBuy 组件未实现
+    // {
+    //   key: 'bundle',
+    //   label: (
+    //     <span>
+    //       <ShoppingCartOutlined />
+    //       批量买入
+    //     </span>
+    //   ),
+    //   children: <BundleBuy />
+    // }
+    // 临时注释：LaunchTasks 组件使用了不存在的 shadcn/ui 库
+    // {
+    //   key: 'tasks',
+    //   label: (
+    //     <span>
+    //       <UnorderedListOutlined />
+    //       任务列表
+    //     </span>
+    //   ),
+    //   children: <LaunchTasks />
+    // }
   ]
 
   return (

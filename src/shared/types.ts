@@ -77,6 +77,10 @@ export interface ElectronAPI {
     updateName: (id: string, name: string) => Promise<IPCResponse<boolean>>
     delete: (id: string) => Promise<IPCResponse<boolean>>
   }
+  // 通用 invoke 方法
+  invoke: (channel: string, ...args: any[]) => Promise<IPCResponse<any>>
+  // Launch 相关
+  onLaunchProgress?: (callback: (event: any, data: any) => void) => void
   // 系统信息
   getVersion: () => NodeJS.ProcessVersions
 }
