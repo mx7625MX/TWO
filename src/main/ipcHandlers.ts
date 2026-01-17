@@ -14,6 +14,21 @@ import type {
 } from '../shared/types'
 
 /**
+ * 为 Promise 添加超时机制
+ */
+async function withTimeout<T>(
+  promise: Promise<T>, 
+  timeoutMs: number,
+  errorMessage = '请求超时'
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+  })
+
+  return Promise.race([promise, timeoutPromise])
+}
+
+/**
  * IPC通信频道常量
  */
 export const IPC_CHANNELS = {
@@ -183,11 +198,19 @@ export function registerIPCHandlers(): void {
 
         let balance: string
 
-        // 根据网络类型查询余额
+        // 根据网络类型查询余额（带10秒超时）
         if (params.network === 'BSC') {
-          balance = await getBSCBalance(params.address)
+          balance = await withTimeout(
+            getBSCBalance(params.address),
+            10000,
+            '余额查询超时，请检查网络连接'
+          )
         } else if (params.network === 'Solana') {
-          balance = await getSolanaBalance(params.address)
+          balance = await withTimeout(
+            getSolanaBalance(params.address),
+            10000,
+            '余额查询超时，请检查网络连接'
+          )
         } else {
           return {
             success: false,

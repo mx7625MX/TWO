@@ -41,7 +41,7 @@ class WalletDatabase {
       CREATE TABLE IF NOT EXISTS wallets (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        address TEXT NOT NULL,
+        address TEXT NOT NULL UNIQUE,
         network TEXT NOT NULL,
         encrypted_key TEXT NOT NULL,
         created_at INTEGER NOT NULL
@@ -70,6 +70,12 @@ class WalletDatabase {
    */
   insertWallet(wallet: CreateWalletInput): string {
     if (!this.db) throw new Error('数据库未初始化')
+
+    // 检查钱包总数
+    const count = this.db.prepare('SELECT COUNT(*) as count FROM wallets').get() as { count: number }
+    if (count.count >= 100) {
+      throw new Error('钱包数量已达上限（100个）')
+    }
 
     const id = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const created_at = Date.now()
@@ -110,6 +116,16 @@ class WalletDatabase {
       console.error('查询钱包列表失败:', error)
       throw new Error('查询钱包列表失败')
     }
+  }
+
+  /**
+   * 获取钱包总数
+   * @returns 钱包总数
+   */
+  getWalletCount(): number {
+    if (!this.db) throw new Error('数据库未初始化')
+    const result = this.db.prepare('SELECT COUNT(*) as count FROM wallets').get() as { count: number }
+    return result.count
   }
 
   /**

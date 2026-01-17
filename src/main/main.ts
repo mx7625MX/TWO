@@ -3,6 +3,16 @@ import path from 'path'
 import { walletDB } from './database'
 import { registerIPCHandlers, removeIPCHandlers } from './ipcHandlers'
 
+// 处理未捕获的异常
+process.on('uncaughtException', (error) => {
+  console.error('未捕获的异常:', error)
+})
+
+// 处理未处理的 Promise 拒绝
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('未处理的Promise拒绝:', reason)
+})
+
 // 定义全局窗口变量
 let mainWindow: BrowserWindow | null = null
 

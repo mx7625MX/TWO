@@ -61,6 +61,7 @@ function BSCBalanceChecker() {
               onChange={(e) => setAddress(e.target.value)}
               prefix={<WalletOutlined style={{ color: '#8c8c8c' }} />}
               onPressEnter={handleCheckBalance}
+              disabled={loading}
             />
           </div>
 

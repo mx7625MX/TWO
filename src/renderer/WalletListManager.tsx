@@ -77,22 +77,28 @@ function WalletListManager() {
   }, [])
 
   // 创建新钱包
-  const handleCreateWallet = async (_values: { name: string; network: 'BSC' | 'Solana' }) => {
+  const handleCreateWallet = async (values: { name: string; network: 'BSC' | 'Solana' }) => {
     setCreatingWallet(true)
     try {
-      // 这里需要调用创建钱包的IPC方法
-      // 目前我们先使用模拟数据
-      message.success('钱包创建功能开发中...')
-      
-      // 模拟创建结果
-      setNewWalletInfo({
-        address: '0x' + Math.random().toString(16).substr(2, 40),
-        privateKey: '0x' + Math.random().toString(16).substr(2, 64),
-        mnemonic: 'word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12',
+      // 调用真实的IPC方法创建钱包
+      const response = await window.electronAPI.wallet.create({
+        name: values.name,
+        network: values.network,
       })
-      
-      createForm.resetFields()
-      // 不立即关闭modal，让用户看到私钥和助记词
+
+      if (response.success && response.data) {
+        // 显示真实的钱包信息
+        setNewWalletInfo({
+          address: response.data.address,
+          privateKey: response.data.privateKey,
+          mnemonic: response.data.mnemonic,
+        })
+        message.success('钱包创建成功！')
+        createForm.resetFields()
+        // 不立即关闭modal，让用户看到私钥和助记词
+      } else {
+        message.error(response.error || '创建钱包失败')
+      }
     } catch (error: any) {
       message.error('创建钱包失败: ' + error.message)
     } finally {
@@ -151,11 +157,22 @@ function WalletListManager() {
   // 批量查询余额
   const handleCheckAllBalances = async () => {
     message.info('批量查询余额...')
+    let successCount = 0
+    let failCount = 0
+    
     for (const wallet of wallets) {
-      await handleCheckBalance(wallet)
+      try {
+        await handleCheckBalance(wallet)
+        successCount++
+      } catch (error) {
+        failCount++
+        console.error(`钱包 ${wallet.name} 查询失败:`, error)
+      }
       // 添加延迟避免请求过快
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
+    
+    message.success(`批量查询完成：成功 ${successCount} 个，失败 ${failCount} 个`)
   }
 
   // 删除钱包

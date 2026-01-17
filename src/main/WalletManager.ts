@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { Keypair } from '@solana/web3.js'
+import { Keypair, mnemonicToKeyPair } from '@solana/web3.js'
 import { v4 as uuidv4 } from 'uuid'
 import * as bip39 from 'bip39'
 import { encrypt, decrypt } from '../shared/cryptoUtils'
@@ -52,9 +52,27 @@ export class WalletManager {
    * 构造函数
    * @param encryptionPassword 用于加密私钥的密码（应从安全配置中获取）
    */
-  constructor(encryptionPassword?: string) {
-    // 使用提供的密码或默认密码（生产环境应从环境变量或安全存储中获取）
-    this.encryptionKey = encryptionPassword || process.env.WALLET_ENCRYPTION_KEY || 'default_encryption_key_change_in_production'
+  constructor(encryptionPassword: string) {
+    // 强制要求提供密码
+    if (!encryptionPassword || encryptionPassword.trim() === '') {
+      throw new Error('必须提供加密密码')
+    }
+    
+    this.encryptionKey = encryptionPassword
+  }
+
+  /** 
+   * 验证密码强度
+   * @param password 密码
+   * @returns 是否通过验证
+   */
+  validatePasswordStrength(password: string): boolean {
+    if (password.length < 10) return false
+    if (!/[A-Z]/.test(password)) return false
+    if (!/[a-z]/.test(password)) return false
+    if (!/[0-9]/.test(password)) return false
+    if (!/[^A-Za-z0-9]/.test(password)) return false
+    return true
   }
 
   /**
@@ -367,24 +385,11 @@ export class WalletManager {
     derivationPath?: string
   ): { address: string; privateKey: string } {
     try {
-      // Solana标准派生路径
+      // Solana 标准派生路径
       const path = derivationPath || "m/44'/501'/0'/0'"
 
-      // 从助记词生成种子
-      const seed = bip39.mnemonicToSeedSync(mnemonic)
-
-      // 使用ethers的HDNodeWallet进行派生（兼容BIP44）
-      const hdNode = ethers.HDNodeWallet.fromSeed(seed)
-      const derived = hdNode.derivePath(path)
-
-      // 从派生的私钥创建Solana Keypair
-      // 需要将以太坊格式的私钥转换为Solana格式
-      const privateKeyBytes = Buffer.from(derived.privateKey.slice(2), 'hex')
-      
-      // Solana使用Ed25519，需要特殊处理
-      // 这里使用派生的私钥前32字节作为种子
-      const seed32 = privateKeyBytes.slice(0, 32)
-      const keypair = Keypair.fromSeed(seed32)
+      // 使用 Solana 官方方法从助记词生成 Keypair
+      const keypair = mnemonicToKeyPair(mnemonic, path)
 
       return {
         address: keypair.publicKey.toBase58(),

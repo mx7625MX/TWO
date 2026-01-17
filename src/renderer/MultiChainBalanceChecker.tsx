@@ -6,7 +6,6 @@ import { getSolanaBalance, formatSolanaBalance } from '@shared/solanaUtils'
 import './WalletList.css'
 
 const { Title, Text } = Typography
-const { TabPane } = Tabs
 
 type NetworkType = 'bsc' | 'solana'
 
@@ -90,10 +89,14 @@ function MultiChainBalanceChecker() {
 
         <Divider />
 
-        <Tabs activeKey={activeNetwork} onChange={handleNetworkChange}>
-          <TabPane tab="🔶 BSC Network" key="bsc" />
-          <TabPane tab="🟢 Solana Network" key="solana" />
-        </Tabs>
+        <Tabs 
+          activeKey={activeNetwork} 
+          onChange={handleNetworkChange}
+          items={[
+            { key: 'bsc', label: '🔶 BSC Network' },
+            { key: 'solana', label: '🟢 Solana Network' }
+          ]}
+        />
 
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <div>
@@ -105,6 +108,7 @@ function MultiChainBalanceChecker() {
               onChange={(e) => setAddress(e.target.value)}
               prefix={<WalletOutlined style={{ color: '#8c8c8c' }} />}
               onPressEnter={handleCheckBalance}
+              disabled={loading}
             />
           </div>
 
